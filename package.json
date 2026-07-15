@@ -15,16 +15,20 @@
   "dependencies": {
     "@clerk/backend": "^3.11.4",
     "@clerk/express": "^2.1.40",
+    "@google/generative-ai": "^0.24.1",
     "@neondatabase/serverless": "^1.1.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
     "express": "^5.2.1",
+    "multer": "^2.2.0",
+    "sharp": "^0.35.3",
     "tsx": "^4.23.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/multer": "^2.2.0",
     "@types/node": "^26.1.1",
     "drizzle-kit": "^0.31.10",
     "typescript": "^7.0.2"

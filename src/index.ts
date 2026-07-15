@@ -4,10 +4,13 @@ import 'dotenv/config'
 import { db } from './db/index.js'
 import { screenshots } from './db/schema.js'
 import { desc, ilike, eq, and } from 'drizzle-orm'
+import ocrRouter from './routes/ocr.js'
+import os from 'os'
 
 const app = express()
 app.use(cors())
 app.use(express.json({ limit: '10mb' }))
+app.use('/api', ocrRouter)
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' })
@@ -93,7 +96,19 @@ app.delete('/api/screenshots/:id', async (req, res) => {
   }
 })
 
-const PORT = process.env.PORT || 4000
-app.listen(PORT, () => {
-  console.log(`Lynkeus backend running on http://localhost:${PORT}`)
+function getLanIP() {
+  const nets = os.networkInterfaces()
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name] ?? []) {
+      if (net.family === 'IPv4' && !net.internal) return net.address
+    }
+  }
+  return 'localhost'
+}
+
+const PORT = Number(process.env.PORT) || 4000
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Lynkeus backend running on:`)
+  console.log(`  Local:   http://localhost:${PORT}`)
+  console.log(`  Network: http://${getLanIP()}:${PORT}`)
 })
