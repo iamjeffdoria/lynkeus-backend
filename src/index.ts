@@ -5,12 +5,14 @@ import { db } from './db/index.js'
 import { screenshots } from './db/schema.js'
 import { desc, ilike, eq, and } from 'drizzle-orm'
 import ocrRouter from './routes/ocr.js'
+import onboardingRouter from './routes/onboarding.js'
 import os from 'os'
 
 const app = express()
 app.use(cors())
 app.use(express.json({ limit: '10mb' }))
 app.use('/api', ocrRouter)
+app.use('/api', onboardingRouter)
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' })
@@ -67,6 +69,38 @@ app.get('/api/screenshots', async (req, res) => {
   } catch (err) {
     console.error('[Lynkeus] failed to fetch screenshots:', err)
     res.status(500).json({ error: 'Failed to fetch screenshots' })
+  }
+})
+
+// Rename (or clear) a screenshot's title
+app.patch('/api/screenshots/:id', async (req, res) => {
+  try {
+    const { id } = req.params
+    const { userId, title } = req.body
+
+    if (!userId || typeof userId !== 'string') {
+      return res.status(400).json({ error: 'userId is required' })
+    }
+    if (typeof title !== 'string') {
+      return res.status(400).json({ error: 'title is required' })
+    }
+
+    const trimmed = title.trim().slice(0, 120)
+
+    const [updated] = await db
+      .update(screenshots)
+      .set({ title: trimmed || null })
+      .where(and(eq(screenshots.id, id), eq(screenshots.userId, userId)))
+      .returning()
+
+    if (!updated) {
+      return res.status(404).json({ error: 'Screenshot not found' })
+    }
+
+    res.json(updated)
+  } catch (err) {
+    console.error('[Lynkeus] failed to update screenshot title:', err)
+    res.status(500).json({ error: 'Failed to update title' })
   }
 })
 
