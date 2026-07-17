@@ -28,3 +28,13 @@ export const userOnboarding = pgTable('user_onboarding', {
   completedAt: timestamp('completed_at'),
   createdAt: timestamp('created_at').defaultNow(),
 })
+
+export const feedback = pgTable('feedback', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id').notNull(),
+  category: text('category').notNull(), // 'bug' | 'idea' | 'general'
+  message: text('message').notNull(),
+  rating: integer('rating'), // optional 1-5, null if not given
+  pageContext: text('page_context'), // e.g. '/dashboard', helpful for triage
+  createdAt: timestamp('created_at').defaultNow(),
+})
