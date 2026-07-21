@@ -1,4 +1,5 @@
 import express, { Router } from 'express'
+import { getAuth } from '@clerk/express'
 import { db } from '../db/index.js'
 import { feedback } from '../db/schema.js'
 import { desc } from 'drizzle-orm'
@@ -7,10 +8,14 @@ const router: Router = express.Router()
 
 router.post('/feedback', async (req, res) => {
   try {
-    const { userId, category, message, rating, pageContext } = req.body
+    const { userId } = getAuth(req)
+    const { category, message, rating, pageContext } = req.body
 
-    if (!userId || !message || typeof message !== 'string' || !message.trim()) {
-      return res.status(400).json({ error: 'userId and message are required' })
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' })
+    }
+    if (!message || typeof message !== 'string' || !message.trim()) {
+      return res.status(400).json({ error: 'message is required' })
     }
 
     const validCategories = ['bug', 'idea', 'general']
@@ -35,8 +40,16 @@ router.post('/feedback', async (req, res) => {
   }
 })
 
-router.get('/feedback', async (_req, res) => {
+router.get('/feedback', async (req, res) => {
   try {
+    const { userId } = getAuth(req)
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' })
+    }
+    if (userId !== process.env.ADMIN_USER_ID) {
+      return res.status(403).json({ error: 'Forbidden' })
+    }
+
     const results = await db.select().from(feedback).orderBy(desc(feedback.createdAt))
     res.json(results)
   } catch (err) {

@@ -1,6 +1,7 @@
 import express from 'express'
 import cors from 'cors'
 import 'dotenv/config'
+import { clerkMiddleware, getAuth } from '@clerk/express'
 import { db } from './db/index.js'
 import { screenshots } from './db/schema.js'
 import { desc, eq, and } from 'drizzle-orm'
@@ -12,6 +13,7 @@ import uploadRouter from './routes/upload.js'
 const app = express()
 app.use(cors())
 app.use(express.json({ limit: '10mb' }))
+app.use(clerkMiddleware())
 app.use('/api', ocrRouter)
 app.use('/api', onboardingRouter)
 app.use('/api', feedbackRouter)
@@ -24,10 +26,11 @@ app.get('/health', (_req, res) => {
 // Save a new screenshot's extracted text
 app.post('/api/screenshots', async (req, res) => {
   try {
-    const { userId, extractedText, tag, fileName, imageData } = req.body
+    const { userId } = getAuth(req)
+    const { extractedText, tag, fileName, imageData } = req.body
 
     if (!userId || !extractedText) {
-      return res.status(400).json({ error: 'userId and extractedText are required' })
+      return res.status(400).json({ error: 'extractedText is required' })
     }
 
     const [saved] = await db
@@ -45,10 +48,11 @@ app.post('/api/screenshots', async (req, res) => {
 // Fetch a user's screenshots, optionally filtered by search query
 app.get('/api/screenshots', async (req, res) => {
   try {
-    const { userId, search } = req.query
+    const { userId } = getAuth(req)
+    const { search } = req.query
 
-    if (!userId || typeof userId !== 'string') {
-      return res.status(400).json({ error: 'userId is required' })
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' })
     }
 
     const results = await db
@@ -71,11 +75,12 @@ app.get('/api/screenshots', async (req, res) => {
 // Rename (or clear) a screenshot's title
 app.patch('/api/screenshots/:id', async (req, res) => {
   try {
-    const { id } = req.params
-    const { userId, title } = req.body
+    const { userId } = getAuth(req)
+    const id = req.params.id as string
+    const { title } = req.body
 
-    if (!userId || typeof userId !== 'string') {
-      return res.status(400).json({ error: 'userId is required' })
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' })
     }
     if (typeof title !== 'string') {
       return res.status(400).json({ error: 'title is required' })
@@ -103,11 +108,11 @@ app.patch('/api/screenshots/:id', async (req, res) => {
 // Delete a screenshot
 app.delete('/api/screenshots/:id', async (req, res) => {
   try {
-    const { id } = req.params
-    const { userId } = req.query
+    const { userId } = getAuth(req)
+    const id = req.params.id as string
 
-    if (!userId || typeof userId !== 'string') {
-      return res.status(400).json({ error: 'userId is required' })
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' })
     }
 
     const [deleted] = await db

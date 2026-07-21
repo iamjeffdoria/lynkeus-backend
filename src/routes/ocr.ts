@@ -2,6 +2,7 @@ import express from 'express'
 import sharp from 'sharp'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { eq, and, sql } from 'drizzle-orm'
+import { getAuth } from '@clerk/express'
 import { db } from '../db/index.js'
 import { usageDaily } from '../db/schema.js'
 
@@ -13,13 +14,13 @@ const model = genAI.getGenerativeModel({ model: 'gemini-flash-lite-latest' })
 const DAILY_LIMIT = 10
 
 function todayDateString() {
-  return new Date().toISOString().slice(0, 10) // YYYY-MM-DD
+  return new Date().toISOString().slice(0, 10)
 }
 
 router.get('/usage', async (req, res) => {
-  const userId = req.query.userId
-  if (!userId || typeof userId !== 'string') {
-    return res.status(400).json({ error: 'userId is required' })
+  const { userId } = getAuth(req)
+  if (!userId) {
+    return res.status(401).json({ error: 'Unauthorized' })
   }
 
   const today = todayDateString()
@@ -39,10 +40,11 @@ router.get('/usage', async (req, res) => {
 })
 
 router.post('/ocr', async (req, res) => {
-  const { userId, imageUrl } = req.body
+  const { userId } = getAuth(req)
+  const { imageUrl } = req.body
 
-  if (!userId || typeof userId !== 'string') {
-    return res.status(400).json({ error: 'userId is required' })
+  if (!userId) {
+    return res.status(401).json({ error: 'Unauthorized' })
   }
   if (!imageUrl || typeof imageUrl !== 'string') {
     return res.status(400).json({ error: 'imageUrl is required' })
