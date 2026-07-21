@@ -3,11 +3,11 @@ import cors from 'cors'
 import 'dotenv/config'
 import { db } from './db/index.js'
 import { screenshots } from './db/schema.js'
-import { desc, ilike, eq, and } from 'drizzle-orm'
+import { desc, eq, and } from 'drizzle-orm'
 import ocrRouter from './routes/ocr.js'
 import onboardingRouter from './routes/onboarding.js'
 import feedbackRouter from './routes/feedback.js'
-import os from 'os'
+import uploadRouter from './routes/upload.js'
 
 const app = express()
 app.use(cors())
@@ -15,6 +15,7 @@ app.use(express.json({ limit: '10mb' }))
 app.use('/api', ocrRouter)
 app.use('/api', onboardingRouter)
 app.use('/api', feedbackRouter)
+app.use('/api', uploadRouter)
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' })
@@ -50,19 +51,12 @@ app.get('/api/screenshots', async (req, res) => {
       return res.status(400).json({ error: 'userId is required' })
     }
 
-    const results = search && typeof search === 'string'
-      ? await db
-          .select()
-          .from(screenshots)
-          .where(eq(screenshots.userId, userId))
-          .orderBy(desc(screenshots.createdAt))
-      : await db
-          .select()
-          .from(screenshots)
-          .where(eq(screenshots.userId, userId))
-          .orderBy(desc(screenshots.createdAt))
+    const results = await db
+      .select()
+      .from(screenshots)
+      .where(eq(screenshots.userId, userId))
+      .orderBy(desc(screenshots.createdAt))
 
-    // Simple in-memory filter for search (fine at MVP scale)
     const filtered = search && typeof search === 'string'
       ? results.filter((r) => r.extractedText.toLowerCase().includes(search.toLowerCase()))
       : results
@@ -132,19 +126,4 @@ app.delete('/api/screenshots/:id', async (req, res) => {
   }
 })
 
-function getLanIP() {
-  const nets = os.networkInterfaces()
-  for (const name of Object.keys(nets)) {
-    for (const net of nets[name] ?? []) {
-      if (net.family === 'IPv4' && !net.internal) return net.address
-    }
-  }
-  return 'localhost'
-}
-
-const PORT = Number(process.env.PORT) || 4000
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Lynkeus backend running on:`)
-  console.log(`  Local:   http://localhost:${PORT}`)
-  console.log(`  Network: http://${getLanIP()}:${PORT}`)
-})
+export default app

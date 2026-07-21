@@ -1,5 +1,4 @@
 import express from 'express'
-import multer from 'multer'
 import sharp from 'sharp'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { eq, and, sql } from 'drizzle-orm'
@@ -7,11 +6,6 @@ import { db } from '../db/index.js'
 import { usageDaily } from '../db/schema.js'
 
 const router = express.Router()
-
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 15 * 1024 * 1024 },
-})
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string)
 const model = genAI.getGenerativeModel({ model: 'gemini-flash-lite-latest' })
@@ -44,14 +38,14 @@ router.get('/usage', async (req, res) => {
   }
 })
 
-router.post('/ocr', upload.single('image'), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: 'No image uploaded' })
-  }
+router.post('/ocr', async (req, res) => {
+  const { userId, imageUrl } = req.body
 
-  const userId = req.body.userId
   if (!userId || typeof userId !== 'string') {
     return res.status(400).json({ error: 'userId is required' })
+  }
+  if (!imageUrl || typeof imageUrl !== 'string') {
+    return res.status(400).json({ error: 'imageUrl is required' })
   }
 
   const today = todayDateString()
@@ -87,8 +81,15 @@ router.post('/ocr', upload.single('image'), async (req, res) => {
     const newCount = (reserved.rows[0] as { count: number }).count
 
     try {
+      // Fetch the image from Cloudinary (already uploaded client-side).
+      const imageRes = await fetch(imageUrl)
+      if (!imageRes.ok) {
+        throw new Error(`Failed to fetch image from ${imageUrl} (${imageRes.status})`)
+      }
+      const imageBuffer = Buffer.from(await imageRes.arrayBuffer())
+
       // Resize to keep token usage low.
-      const resized = await sharp(req.file.buffer)
+      const resized = await sharp(imageBuffer)
         .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })
         .jpeg({ quality: 85 })
         .toBuffer()
