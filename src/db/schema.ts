@@ -25,6 +25,8 @@ export const userOnboarding = pgTable('user_onboarding', {
   userId: text('user_id').notNull().unique(),
   completed: boolean('completed').notNull().default(false),
   currentStep: integer('current_step').notNull().default(0),
+  source: text('source'), // e.g. 'instagram', 'x', 'linkedin', 'other'
+  sourceOther: text('source_other'), // free text when source === 'other'
   completedAt: timestamp('completed_at'),
   createdAt: timestamp('created_at').defaultNow(),
 })

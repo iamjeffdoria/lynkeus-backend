@@ -32,6 +32,8 @@ router.get('/onboarding', async (req, res) => {
   }
 })
 
+const VALID_SOURCES = ['instagram', 'x', 'linkedin', 'product_hunt', 'app_builders_ph', 'youtube', 'other']
+
 // Mark onboarding complete for a user
 router.post('/onboarding/complete', async (req, res) => {
   const { userId } = getAuth(req)
@@ -39,13 +41,30 @@ router.post('/onboarding/complete', async (req, res) => {
     return res.status(401).json({ error: 'Unauthorized' })
   }
 
+  const { source, sourceOther } = req.body || {}
+
+  if (source && !VALID_SOURCES.includes(source)) {
+    return res.status(400).json({ error: 'Invalid source' })
+  }
+
   try {
     const [updated] = await db
       .insert(userOnboarding)
-      .values({ userId, completed: true, completedAt: new Date() })
+      .values({
+        userId,
+        completed: true,
+        completedAt: new Date(),
+        source: source ?? null,
+        sourceOther: source === 'other' ? (sourceOther?.trim().slice(0, 200) || null) : null,
+      })
       .onConflictDoUpdate({
         target: userOnboarding.userId,
-        set: { completed: true, completedAt: new Date() },
+        set: {
+          completed: true,
+          completedAt: new Date(),
+          source: source ?? null,
+          sourceOther: source === 'other' ? (sourceOther?.trim().slice(0, 200) || null) : null,
+        },
       })
       .returning()
 
